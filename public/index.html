@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>MISI GEOMETRI — Escape Room Kekongruenan &amp; Kesebangunan</title>
+<meta name="description" content="Game kuis escape room HOTS Kekongruenan & Kesebangunan untuk SMP Kelas 9. Kumpulkan 8 kristal geometri!" />
+<link rel="stylesheet" href="/style.css" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔷</text></svg>" />
+</head>
+<body>
+<div class="bg-grid" aria-hidden="true"></div>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="brand-mark">🔷</div>
+    <div>
+      <h1>MISI GEOMETRI</h1>
+      <p>Escape Room · Kekongruenan &amp; Kesebangunan · Kelas 9</p>
+    </div>
+  </div>
+  <div class="hud">
+    <span class="hud-chip" id="hudCrystal">🔷 Kristal: <b>0/8</b></span>
+    <span class="hud-chip" id="hudScore">⭐ Skor: <b>0</b></span>
+    <button class="icon-btn" id="btnMusic" title="Musik">🎵</button>
+    <button class="icon-btn" id="btnBoard" title="Daftar Nilai">🏆</button>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- LAYAR 1: Pembuka / Briefing -->
+  <section id="screen-home" class="screen">
+    <div class="panel hero-panel">
+      <div class="sysline"><span class="dot"></span> SISTEM MISI-GEO v1.0 · TAUTAN AKTIF</div>
+      <h2 class="glow">🎯 BRIEFING MISI</h2>
+      <p class="brief">
+        Selamat datang, <b>agen geometri</b>! Delapan <b>kristal geometri</b> tersebar di
+        delapan sektor yang terkunci. Setiap sektor dijaga oleh 5 soal HOTS
+        <b>kekongruenan &amp; kesebangunan</b>.
+      </p>
+      <ul class="rules">
+        <li>🔷 Raih skor <b>≥ 60</b> untuk merebut kristal &amp; membuka sektor berikutnya</li>
+        <li>⭐ Tiap jawaban benar bernilai <b>20 poin</b> (maksimal 100 per sektor)</li>
+        <li>🏆 Papan nilai diperbarui otomatis — berlombalah dengan temanmu!</li>
+      </ul>
+      <button class="btn-primary" id="btnStart">🚀 MULAI MISI</button>
+    </div>
+  </section>
+
+  <!-- LAYAR 2: Identitas siswa -->
+  <section id="screen-identity" class="screen" hidden>
+    <div class="panel">
+      <div class="sysline"><span class="dot"></span> REGISTRASI AGEN</div>
+      <h2 class="glow">🪪 IDENTITAS AGEN</h2>
+      <p class="muted">Isi identitasmu sebelum memasuki sektor pertama.</p>
+      <form id="identityForm" class="form">
+        <label>Nama Lengkap
+          <input type="text" id="fNama" maxlength="100" placeholder="cth. Budi Santoso" required />
+        </label>
+        <div class="form-row">
+          <label>Kelas
+            <select id="fKelas" required></select>
+          </label>
+          <label>Nomor Absen
+            <select id="fAbsen" required></select>
+          </label>
+        </div>
+        <label>Asal Sekolah
+          <input type="text" id="fSekolah" maxlength="100" placeholder="cth. SMP Negeri 1" required />
+        </label>
+        <p class="form-error" id="identityError" hidden></p>
+        <button type="submit" class="btn-primary">🔓 MASUK KE PETA SEKTOR</button>
+      </form>
+    </div>
+  </section>
+
+  <!-- LAYAR 3: Pilih level -->
+  <section id="screen-levels" class="screen" hidden>
+    <div class="panel">
+      <div class="sysline"><span class="dot"></span> PETA SEKTOR <span id="agentTag" class="agent-tag"></span></div>
+      <h2 class="glow">🗺️ PILIH SEKTOR</h2>
+      <p class="muted">Selesaikan sektor berurutan untuk membuka sektor berikutnya.</p>
+      <div id="levelGrid" class="level-grid"></div>
+      <div class="row-actions">
+        <span class="word-box">📄 Soal Word (Guru):
+          <select id="wordLevel"></select>
+          <button class="btn-ghost" id="btnWordDl">Unduh</button>
+        </span>
+      </div>
+    </div>
+  </section>
+
+  <!-- LAYAR 4: Kuis -->
+  <section id="screen-quiz" class="screen" hidden>
+    <div class="panel">
+      <div class="sysline"><span class="dot"></span> <span id="quizTitle">SEKTOR 1</span>
+        <span class="q-progress" id="quizProgress"></span>
+      </div>
+      <div class="q-card">
+        <div class="q-num" id="qNum">Soal 1/5</div>
+        <p class="q-text" id="qText"></p>
+        <div class="q-opts" id="qOpts"></div>
+      </div>
+      <div class="row-actions">
+        <button class="btn-ghost" id="btnQuitQuiz">✕ Keluar</button>
+        <button class="btn-primary" id="btnNextQ" disabled>Lanjut ➜</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- LAYAR 5: Hasil -->
+  <section id="screen-result" class="screen" hidden>
+    <div class="panel result-panel">
+      <div class="sysline"><span class="dot"></span> LAPORAN MISI</div>
+      <div id="crystalAnim" class="crystal-anim" hidden>🔷</div>
+      <h2 class="glow" id="resultTitle"></h2>
+      <p class="result-score"><span id="resultScore">0</span><small>/100</small></p>
+      <p class="muted" id="resultDetail"></p>
+      <div id="reviewList" class="review-list"></div>
+      <div class="row-actions wrap">
+        <button class="btn-primary" id="btnNextLevel" hidden>➜ Sektor Berikutnya</button>
+        <button class="btn-ghost" id="btnBackLevels">🗺️ Peta Sektor</button>
+        <button class="btn-ghost" id="btnBoard2">🏆 Daftar Nilai</button>
+        <a class="btn-ghost" id="btnShareWA" href="#" target="_blank" rel="noopener">💬 Share WA</a>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="footer">MISI GEOMETRI © 2026 · Kuis HOTS Kekongruenan &amp; Kesebangunan · Bun + Hono + SQLite</footer>
+
+<!-- Modal Daftar Nilai -->
+<div id="boardModal" class="modal" hidden>
+  <div class="modal-card">
+    <div class="modal-head">
+      <h2>🏆 Daftar Nilai</h2>
+      <button class="btn-close" data-close="boardModal" aria-label="Tutup">✕</button>
+    </div>
+    <div class="board-tabs">
+      <button class="btab active" data-bl="total">Total</button>
+      <button class="btab" data-bl="1">S1</button><button class="btab" data-bl="2">S2</button>
+      <button class="btab" data-bl="3">S3</button><button class="btab" data-bl="4">S4</button>
+      <button class="btab" data-bl="5">S5</button><button class="btab" data-bl="6">S6</button>
+      <button class="btab" data-bl="7">S7</button><button class="btab" data-bl="8">S8</button>
+    </div>
+    <p class="sync-note"><span class="dot"></span> sinkronisasi otomatis tiap 15 detik</p>
+    <ol id="boardList" class="board-list"></ol>
+  </div>
+</div>
+
+<div id="toast" class="toast" hidden></div>
+
+<script src="/app.js"></script>
+</body>
+</html>

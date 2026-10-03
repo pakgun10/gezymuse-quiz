@@ -1,0 +1,1 @@
+{"dependencies":{"hono":"^4.6.0"},"description":"MISI GEOMETRI — game kuis escape-room HOTS Kekongruenan & Kesebangunan untuk SMP Kelas 9 (Bun + Hono + bun:sqlite)","devDependencies":{"@types/bun":"latest"},"name":"gezymuse-quiz","scripts":{"dev":"bun --watch run src/index.ts","start":"bun run src/index.ts"},"type":"module","version":"1.0.0"}

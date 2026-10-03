@@ -1,0 +1,22 @@
+[Unit]
+Description=MISI GEOMETRI quiz game (Bun + Hono + SQLite)
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/opt/gezymuse-quiz
+ExecStart=/usr/local/bin/bun run src/index.ts
+Restart=always
+RestartSec=5
+
+Environment=PORT=3021
+Environment=DATA_DIR=/var/lib/gezymuse-quiz
+Environment=SUBMIT_MAX=30
+Environment=SUBMIT_WINDOW_MIN=1
+
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
