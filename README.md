@@ -13,7 +13,8 @@ Dibangun dengan **Bun + Hono + bun:sqlite** (tanpa database server terpisah).
 - 🏆 Daftar Nilai (total & per sektor) dengan sinkronisasi otomatis tiap 15 detik
 - 💬 Share WA berisi skor (client-side)
 - 🎵 Musik WebAudio sederhana (tanpa file eksternal)
-- 📄 Ekspor Word (.doc): soal + kunci + pembahasan per sektor, untuk guru
+- 📄 Ekspor Word (.doc): soal + gambar + kunci + pembahasan per sektor, untuk guru
+- 🖼️ Soal bergambar: gambar soal tampil di layar kuis (tanpa bocoran jawaban), gambar pembahasan muncul di layar hasil; dikelola lewat halaman admin `/admin.html` (token `ADMIN_TOKEN`)
 - 🛡️ Anti nyontek: soal dikirim TANPA kunci/pembahasan; validasi jawaban di server; rate-limit submit
 
 ## Menjalankan

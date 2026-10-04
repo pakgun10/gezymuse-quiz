@@ -14,6 +14,8 @@ Environment=PORT=3021
 Environment=DATA_DIR=/var/lib/gezymuse-quiz
 Environment=SUBMIT_MAX=30
 Environment=SUBMIT_WINDOW_MIN=1
+# Token admin untuk /admin.html (ganti dengan nilai acak yang panjang):
+Environment=ADMIN_TOKEN=ganti-dengan-token-acak-panjang
 
 NoNewPrivileges=true
 PrivateTmp=true

@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Admin — MISI GEOMETRI</title>
+<link rel="stylesheet" href="/style.css" />
+<style>
+  .admin-wrap { max-width: 900px; margin: 0 auto; padding: 24px 16px 60px; }
+  .admin-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 14px; }
+  .admin-row input[type=text], .admin-row input[type=password] { flex: 1; min-width: 200px; }
+  .qadmin { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin-bottom: 12px; }
+  .qadmin h4 { margin: 0 0 6px; }
+  .qadmin .thumbs { display: flex; gap: 12px; flex-wrap: wrap; margin: 8px 0; }
+  .qadmin .thumbs img { max-width: 220px; border-radius: 8px; border: 1px solid var(--line); background: #fff; }
+  .qadmin .up { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; font-size: 13px; }
+  .lbl { font-size: 12px; opacity: .75; }
+  #adminMsg { min-height: 20px; font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="admin-wrap">
+  <h1>🔧 Admin Gambar Soal</h1>
+  <p class="lbl">Halaman ini tidak ditautkan dari halaman utama. Butuh <b>ADMIN_TOKEN</b> dari server.</p>
+  <div class="admin-row">
+    <input type="password" id="token" placeholder="Tempel ADMIN_TOKEN…" autocomplete="off" />
+    <button class="btn-primary" id="btnLoad">Muat Daftar Soal</button>
+  </div>
+  <p id="adminMsg"></p>
+  <div id="qlist"></div>
+</div>
+<script>
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+if (sessionStorage.getItem("gq_admin_token")) $("#token").value = sessionStorage.getItem("gq_admin_token");
+function msg(t, ok) { const m = $("#adminMsg"); m.textContent = t; m.style.color = ok ? "#34d399" : "#f87171"; }
+async function api(path, opts = {}) {
+  const token = $("#token").value.trim();
+  sessionStorage.setItem("gq_admin_token", token);
+  const r = await fetch(path, { ...opts, headers: { "x-admin-token": token, ...(opts.headers || {}) } });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(data.error || ("HTTP " + r.status));
+  return data;
+}
+$("#btnLoad").addEventListener("click", async () => {
+  try {
+    msg("Memuat…", true);
+    const { questions } = await api("/api/admin/questions");
+    msg(`Ditemukan ${questions.length} soal.`, true);
+    $("#qlist").innerHTML = questions.map((q) => `
+      <div class="qadmin" data-id="${q.id}">
+        <h4>#${q.id} · Level ${q.level}</h4>
+        <div>${esc(q.q.slice(0, 120))}${q.q.length > 120 ? "…" : ""}</div>
+        <div class="thumbs">
+          <div><div class="lbl">Gambar soal</div>${q.imageUrl ? `<img src="${q.imageUrl}" alt="" />` : "<span class='lbl'>—</span>"}</div>
+          <div><div class="lbl">Gambar pembahasan</div>${q.explainImageUrl ? `<img src="${q.explainImageUrl}" alt="" />` : "<span class='lbl'>—</span>"}</div>
+        </div>
+        <div class="up">
+          <select class="slot"><option value="image">Gambar soal</option><option value="explain">Gambar pembahasan</option></select>
+          <input type="file" class="file" accept="image/png,image/jpeg,image/webp,image/gif" />
+          <button class="btn-primary upbtn">⬆ Unggah</button>
+          <span class="st lbl"></span>
+        </div>
+      </div>`).join("");
+    document.querySelectorAll(".qadmin").forEach((el) => {
+      el.querySelector(".upbtn").addEventListener("click", async () => {
+        const id = el.dataset.id;
+        const file = el.querySelector(".file").files[0];
+        const slot = el.querySelector(".slot").value;
+        const st = el.querySelector(".st");
+        if (!file) { st.textContent = "Pilih file dulu."; return; }
+        st.textContent = "Mengunggah…";
+        try {
+          const fd = new FormData();
+          fd.append("file", file); fd.append("slot", slot);
+          const data = await api(`/api/admin/questions/${id}/image`, { method: "POST", body: fd });
+          st.textContent = "Berhasil ✓";
+          $("#btnLoad").click();
+        } catch (e) { st.textContent = "Gagal: " + e.message; }
+      });
+    });
+  } catch (e) { msg("Gagal: " + e.message, false); }
+});
+</script>
+</body>
+</html>

@@ -160,6 +160,9 @@ function renderQ() {
   $("#qNum").textContent = `Soal ${quiz.idx + 1}/${quiz.questions.length}`;
   $("#quizProgress").textContent = `${Object.keys(quiz.picks).length} terjawab`;
   $("#qText").textContent = q.q;
+  const iw = $("#qImgWrap");
+  if (q.imageUrl) { $("#qImg").src = q.imageUrl; iw.hidden = false; }
+  else { iw.hidden = true; $("#qImg").removeAttribute("src"); }
   $("#qOpts").innerHTML = q.options.map((o, i) => `
     <button class="q-opt ${quiz.picks[q.id] === i ? "selected" : ""}" data-i="${i}">
       <span class="letter">${LETTERS[i]}</span><span>${esc(o)}</span>
@@ -218,7 +221,9 @@ function showResult(data) {
     <div class="review-item ${d.correct ? "ok" : "no"}">
       <div class="rv-head">${d.correct ? "✅" : "❌"} Soal ${i + 1}</div>
       <div>${esc(d.q)}</div>
+      ${d.imageUrl ? `<div class="rv-img-wrap"><img class="q-img" src="${d.imageUrl}" alt="Gambar soal ${i + 1}" loading="lazy" /></div>` : ""}
       <div>Jawabanmu: <b>${d.answer >= 0 ? LETTERS[d.answer] : "—"}</b> · Kunci: <b>${LETTERS[d.correctAnswer]}</b></div>
+      ${d.explainImageUrl ? `<div class="rv-img-wrap"><img class="q-img" src="${d.explainImageUrl}" alt="Pembahasan bergambar soal ${i + 1}" loading="lazy" /></div>` : ""}
       <div class="rv-exp">💡 ${esc(d.explain)}</div>
     </div>`).join("");
 

@@ -1,8 +1,10 @@
 import { Hono } from "hono";
 import { serveStatic } from "hono/bun";
-import { join } from "node:path";
+import { join, basename, extname } from "node:path";
+import { unlink } from "node:fs/promises";
 import {
   db,
+  QIMAGES_DIR,
   LEVELS,
   KELAS_LIST,
   PASS_SCORE,
@@ -12,6 +14,86 @@ import {
 } from "./db";
 
 const app = new Hono();
+
+const ADMIN_TOKEN = process.env.ADMIN_TOKEN?.trim() || "";
+const QIMAGE_EXTS = new Set(["png", "jpg", "jpeg", "webp", "gif"]);
+const QIMAGE_MIME: Record<string, string> = {
+  png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", webp: "image/webp", gif: "image/gif",
+};
+const MAX_QIMAGE_BYTES = 5 * 1024 * 1024;
+
+function imageUrl(name: string | null | undefined): string | null {
+  return name ? `/qimages/${encodeURIComponent(name)}` : null;
+}
+
+function publicQuestion(r: Pick<QuestionRow, "id" | "level" | "q" | "options" | "image">) {
+  return {
+    id: r.id,
+    q: r.q,
+    options: JSON.parse(r.options) as string[],
+    imageUrl: imageUrl(r.image),
+  };
+}
+
+// ---------- Gambar soal ----------
+app.get("/qimages/:name", (c) => {
+  const name = basename(c.req.param("name"));
+  const ext = extname(name).replace(".", "").toLowerCase();
+  if (!QIMAGE_EXTS.has(ext) || name.includes("..")) {
+    return c.json({ error: "File tidak ditemukan." }, 404);
+  }
+  const f = Bun.file(join(QIMAGES_DIR, name));
+  return new Response(f, {
+    headers: {
+      "Content-Type": QIMAGE_MIME[ext],
+      "Cache-Control": "public, max-age=86400",
+      "X-Content-Type-Options": "nosniff",
+    },
+  });
+});
+
+// ---------- Admin (token via env ADMIN_TOKEN) ----------
+function requireAdmin(c: any, next: any) {
+  if (!ADMIN_TOKEN) return c.json({ error: "Admin belum dikonfigurasi (ADMIN_TOKEN kosong)." }, 503);
+  const token = c.req.header("x-admin-token") || c.req.query("token");
+  if (token !== ADMIN_TOKEN) return c.json({ error: "Token admin salah." }, 401);
+  return next();
+}
+
+app.get("/api/admin/questions", requireAdmin, (c) => {
+  const rows = db
+    .query("SELECT id, level, q, image, image_explain FROM questions ORDER BY level, id")
+    .all() as Pick<QuestionRow, "id" | "level" | "q" | "image" | "image_explain">[];
+  return c.json({
+    questions: rows.map((r) => ({
+      id: r.id, level: r.level, q: r.q,
+      imageUrl: imageUrl(r.image), explainImageUrl: imageUrl(r.image_explain),
+    })),
+  });
+});
+
+// Unggah/ganti gambar soal: multipart field "image", slot "image" | "explain".
+app.post("/api/admin/questions/:id/image", requireAdmin, async (c) => {
+  const id = Number(c.req.param("id"));
+  const row = db.query("SELECT * FROM questions WHERE id = ?").get(id) as QuestionRow | null;
+  if (!row) return c.json({ error: "Soal tidak ditemukan." }, 404);
+  const body = await c.req.parseBody();
+  const file = body["file"];
+  if (!(file instanceof File)) return c.json({ error: "File wajib diunggah (field: file)." }, 400);
+  if (file.size === 0 || file.size > MAX_QIMAGE_BYTES) {
+    return c.json({ error: "Ukuran file harus 1 B – 5 MB." }, 400);
+  }
+  const ext = extname(file.name).replace(".", "").toLowerCase();
+  if (!QIMAGE_EXTS.has(ext)) return c.json({ error: "Hanya gambar (png/jpg/webp/gif)." }, 415);
+  const slot = String(body["slot"] ?? "image") === "explain" ? "image_explain" : "image";
+
+  const stored = `q${id}-${slot}-${Date.now().toString(36)}.${ext}`;
+  await Bun.write(join(QIMAGES_DIR, stored), file);
+  const old = slot === "image" ? row.image : row.image_explain;
+  db.query(`UPDATE questions SET ${slot} = ? WHERE id = ?`).run(stored, id);
+  if (old) await unlink(join(QIMAGES_DIR, basename(old))).catch(() => {});
+  return c.json({ imageUrl: `/qimages/${stored}` });
+});
 
 // ---------- Rate limit sederhana untuk POST /api/submit (anti spam) ----------
 const SUBMIT_MAX = Number(process.env.SUBMIT_MAX ?? 30);
@@ -97,16 +179,9 @@ app.get("/api/questions", (c) => {
     return c.json({ error: "Level harus 1–8." }, 400);
   }
   const rows = db
-    .query("SELECT id, level, q, options FROM questions WHERE level = ? ORDER BY id")
-    .all(level) as Pick<QuestionRow, "id" | "level" | "q" | "options">[];
-  return c.json({
-    level,
-    questions: rows.map((r) => ({
-      id: r.id,
-      q: r.q,
-      options: JSON.parse(r.options) as string[],
-    })),
-  });
+    .query("SELECT id, level, q, options, image FROM questions WHERE level = ? ORDER BY id")
+    .all(level) as Pick<QuestionRow, "id" | "level" | "q" | "options" | "image">[];
+  return c.json({ level, questions: rows.map(publicQuestion) });
 });
 
 // Kumpulkan jawaban → validasi di server.
@@ -132,7 +207,7 @@ app.post("/api/submit", async (c) => {
     return c.json({ error: "Level harus 1–8." }, 400);
   }
   const keyRows = db
-    .query("SELECT id, answer, explain, q, options FROM questions WHERE level = ? ORDER BY id")
+    .query("SELECT id, answer, explain, q, options, image, image_explain FROM questions WHERE level = ? ORDER BY id")
     .all(level) as QuestionRow[];
   if (keyRows.length === 0) return c.json({ error: "Soal level ini belum tersedia." }, 404);
   const keyById = new Map(keyRows.map((r) => [r.id, r]));
@@ -147,6 +222,8 @@ app.post("/api/submit", async (c) => {
       question_id: k.id,
       q: k.q,
       options: JSON.parse(k.options) as string[],
+      imageUrl: imageUrl(k.image),
+      explainImageUrl: imageUrl(k.image_explain),
       answer: ans,
       correctAnswer: k.answer,
       correct: isCorrect,
@@ -230,10 +307,11 @@ app.get("/api/export/word", (c) => {
   }
   const meta = LEVELS.find((l) => l.level === level)!;
   const rows = db
-    .query("SELECT q, options, answer, explain FROM questions WHERE level = ? ORDER BY id")
+    .query("SELECT q, options, answer, explain, image FROM questions WHERE level = ? ORDER BY id")
     .all(level) as QuestionRow[];
   if (!rows.length) return c.json({ error: "Soal level ini belum tersedia." }, 404);
 
+  const origin = new URL(c.req.url).origin;
   const letters = ["A", "B", "C", "D"];
   const esc = (s: string) =>
     s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -242,7 +320,10 @@ app.get("/api/export/word", (c) => {
       const opts = (JSON.parse(r.options) as string[])
         .map((o, j) => `<p style="margin:2px 0 2px 24px">${letters[j]}. ${esc(o)}</p>`)
         .join("");
-      return `<p><b>${i + 1}. ${esc(r.q)}</b></p>${opts}`;
+      const img = r.image
+        ? `<p><img src="${origin}${imageUrl(r.image)}" width="520"></p>`
+        : "";
+      return `<p><b>${i + 1}. ${esc(r.q)}</b></p>${img}${opts}`;
     })
     .join("");
   const kunciHtml = rows

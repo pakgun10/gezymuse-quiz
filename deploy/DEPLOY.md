@@ -27,6 +27,21 @@ ExecStart = lokasi bun), lalu:
     sudo systemctl enable --now gezymuse-quiz
     curl -s http://127.0.0.1:3021/api/health
 
+### Token admin (halaman /admin.html)
+
+Isi `ADMIN_TOKEN` dengan nilai acak yang panjang sebelum mengaktifkan
+service, mis.:
+
+    openssl rand -hex 24
+
+Lalu pasang di file service (`Environment=ADMIN_TOKEN=...`) dan restart:
+
+    sudo systemctl restart gezymuse-quiz
+
+Buka `https://domain-anda/admin.html`, tempel token, lalu kelola gambar
+soal (unggah/ganti gambar soal & gambar pembahasan per soal). Tanpa
+`ADMIN_TOKEN`, halaman admin menolak semua aksi.
+
 ## 4. Pasang nginx + HTTPS
 
 Sesuaikan server_name di deploy/nginx.conf (mis. kuis.gezytech.web.id),

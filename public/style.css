@@ -208,3 +208,12 @@ body {
   .panel { padding: 20px 16px; }
   .brand h1 { font-size: 17px; }
 }
+
+/* --- Gambar soal --- */
+.q-img-wrap { margin: 12px 0 4px; text-align: center; }
+.q-img {
+  max-width: 100%; height: auto; border-radius: 12px;
+  border: 1px solid var(--line); background: #fff;
+  box-shadow: 0 4px 18px rgba(0,0,0,.25);
+}
+.rv-img-wrap { margin: 10px 0; text-align: center; }
